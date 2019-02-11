@@ -15,36 +15,34 @@ import java.util.concurrent.ExecutionException;
 
 public class Program
 {
-        /*
-            Example Gremlin queries to perform the following:
-            - add vertices and edges
-            - query with filters, projections, 
-            - traversals, including loops
-            - update annd delete vertices and edges
-        */
-        static final String gremlinQueries[] = new String[] {
-            "g.V().drop()",
-            "g.addV('person').property('id', 'thomas').property('firstName', 'Thomas').property('age', 44)",
-            "g.addV('person').property('id', 'mary').property('firstName', 'Mary').property('lastName', 'Andersen').property('age', 39)",
-            "g.addV('person').property('id', 'ben').property('firstName', 'Ben').property('lastName', 'Miller')",
-            "g.addV('person').property('id', 'robin').property('firstName', 'Robin').property('lastName', 'Wakefield')",
-            "g.V('thomas').addE('knows').to(g.V('mary'))",
-            "g.V('thomas').addE('knows').to(g.V('ben'))",
-            "g.V('ben').addE('knows').to(g.V('robin'))",
-            "g.V('thomas').property('age', 44)",
-            "g.V().count()",
-            "g.V().hasLabel('person').has('age', gt(40))",
-            "g.V().hasLabel('person').order().by('firstName', decr)",
-            "g.V('thomas').outE('knows').inV().hasLabel('person')",
-            "g.V('thomas').outE('knows').inV().hasLabel('person').outE('knows').inV().hasLabel('person')",
-            "g.V('thomas').repeat(out()).until(has('id', 'robin')).path()",
-            "g.V('thomas').outE('knows').where(inV().has('id', 'mary')).drop()",
-            "g.V('thomas').drop()" };
+    /*
+        Example Gremlin queries to perform the following:
+        - add vertices and edges
+        - query with filters, projections,
+        - traversals, including loops
+        - update and delete vertices and edges
+    */
+    static final String gremlinQueries[] = new String[] {
+        "g.V().drop()",
+        "g.addV('person').property('id', 'thomas').property('firstName', 'Thomas').property('age', 44)",
+        "g.addV('person').property('id', 'mary').property('firstName', 'Mary').property('lastName', 'Andersen').property('age', 39)",
+        "g.addV('person').property('id', 'ben').property('firstName', 'Ben').property('lastName', 'Miller')",
+        "g.addV('person').property('id', 'robin').property('firstName', 'Robin').property('lastName', 'Wakefield')",
+        "g.V('thomas').addE('knows').to(g.V('mary'))",
+        "g.V('thomas').addE('knows').to(g.V('ben'))",
+        "g.V('ben').addE('knows').to(g.V('robin'))",
+        "g.V('thomas').property('age', 44)",
+        "g.V().count()",
+        "g.V().hasLabel('person').has('age', gt(40))",
+        "g.V().hasLabel('person').order().by('firstName', decr)",
+        "g.V('thomas').outE('knows').inV().hasLabel('person')",
+        "g.V('thomas').outE('knows').inV().hasLabel('person').outE('knows').inV().hasLabel('person')",
+        "g.V('thomas').repeat(out()).until(has('id', 'robin')).path()",
+        "g.V('thomas').outE('knows').where(inV().has('id', 'mary')).drop()",
+        "g.V('thomas').drop()" };
 
 
-    public static void main( String[] args ) throws ExecutionException, InterruptedException {
-
-
+    public static Client createClient() {
         /**
          * There typically needs to be only one Cluster instance in an application.
          */
@@ -66,31 +64,66 @@ public class Program
             // Handle file errors.
             System.out.println("Couldn't find the configuration file.");
             e.printStackTrace();
-            return;
+
+            throw new RuntimeException(e);
         }
 
+        return client;
+    }
+
+    public static void runAllGremlinQueries() throws ExecutionException, InterruptedException {
+        runGremlinQueries(gremlinQueries);
+    }
+
+    public static void runGremlinQueries(String... queries) throws ExecutionException, InterruptedException {
+        Client client = createClient();
+
         // After connection is successful, run all the queries against the server.
-        for (String query : gremlinQueries) {
-            System.out.println("\nSubmitting this Gremlin query: " + query);
-
-            // Submitting remote query to the server.
-            ResultSet results = results = client.submit(query);
-
-            CompletableFuture<List<Result>> completableFutureResults = results.all();
-            List<Result> resultList = completableFutureResults.get();
+        for (String query : queries) {
+            List<Result> resultList = runGremlinQuery(client, query);
 
             for (Result result : resultList) {
                 System.out.println("\nQuery result:");
                 System.out.println(result.toString());
             }
         }
+    }
+
+    public static List<Result> runGremlinQuery(Client client, String query) throws ExecutionException, InterruptedException {
+        System.out.println("\nSubmitting this Gremlin query: " + query);
+
+        // Submitting remote query to the server.
+        ResultSet results = results = client.submit(query);
+
+        CompletableFuture<List<Result>> completableFutureResults = results.all();
+        List<Result> resultList = completableFutureResults.get();
+
+        return resultList;
+    }
+
+    public static void runVertexTest() throws ExecutionException, InterruptedException {
+        runGremlinQueries(gremlinQueries[0], gremlinQueries[1]);
+
+        List<Result> resultList = runGremlinQuery(createClient(), gremlinQueries[10]);
+
+        for (Result result : resultList) {
+            System.out.println("\nQuery result:");
+            System.out.println(result.toString());
+            System.out.println(result.getVertex());
+        }
+    }
+
+    public static void main( String[] args ) throws ExecutionException, InterruptedException {
+        runAllGremlinQueries();
+        runVertexTest();
 
         System.out.println("Demo complete!\n Press Enter key to continue...");
         try{
             System.in.read();
         } catch (IOException e){
             e.printStackTrace();
-            return;
+
+            throw new RuntimeException(e);
         }
         System.exit(0);
     }
